@@ -4,3 +4,10 @@
 *.jar
 *.war
 *.ear
+
+target
+resin-data
+
+.project
+.settings
+.classpath
