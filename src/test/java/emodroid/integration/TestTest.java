@@ -9,39 +9,16 @@ import java.util.concurrent.Executors;
 
 import org.junit.Test;
 
-import com.caucho.resin.HttpEmbed;
-import com.caucho.resin.ResinEmbed;
-import com.caucho.resin.WebAppEmbed;
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.EventTranslator;
 import com.lmax.disruptor.SingleThreadedClaimStrategy;
 import com.lmax.disruptor.SleepingWaitStrategy;
 import com.lmax.disruptor.dsl.Disruptor;
 
-public class TestTest {
+import emodroid.utils.CanEmbedAServer;
 
-	private ResinEmbed server = null;
-
-	private void startServer() {
-		if (server != null) {
-			throw new IllegalStateException("Server is already started");
-		}
-
-		server = new ResinEmbed();
-
-		HttpEmbed http = new HttpEmbed(8080);
-		server.addPort(http);
-
-		WebAppEmbed webApp = new WebAppEmbed("/", "src/main/web");
-		server.addWebApp(webApp);
-
-		server.start();
-	}
-
-	private void stopServer() {
-		server.stop();
-	}
+public class TestTest extends CanEmbedAServer {
 
 	@Test
 	public void runAnEmbeddedResin() throws InterruptedException, IOException {
@@ -57,54 +34,37 @@ public class TestTest {
 
 	@SuppressWarnings("unchecked")
 	@Test
-	public void runADisruptor() {
+	public void runADisruptor() throws InterruptedException {
 		final ExecutorService executor = Executors.newCachedThreadPool();
 		
-		Disruptor<ValueEvent> disruptor = new Disruptor<ValueEvent>(
-				ValueEvent.EVENT_FACTORY, executor,
+		Disruptor<Command> disruptor = new Disruptor<Command>(
+				Command.EVENT_FACTORY, executor,
 				new SingleThreadedClaimStrategy(1024),
 				new SleepingWaitStrategy());
 		
+
+		final Journaller journaller1 = new Journaller();
+		final Journaller journaller2 = new Journaller();
+		final Journaller journaller3 = new Journaller();
 		final Counter counter = new Counter();
 		
-		disruptor.handleEventsWith(new EventHandler<ValueEvent>() {
-			public void onEvent(final ValueEvent event, final long sequence,
-					final boolean endOfBatch) throws Exception {
-				counter.inc();
-			}
-		});
+		disruptor.handleEventsWith(journaller1, journaller2, journaller3).then(counter);
+		disruptor.start();
 		
-		RingBuffer<ValueEvent> ringBuffer = disruptor.start();
+		final CommandTranslator randomCommands = new CommandTranslator();
 		
-		long seq = ringBuffer.next();
-		final ValueEvent ev1 = ringBuffer.get(seq);
-		ev1.setValue(345);
-		ringBuffer.publish(seq);
-		
-		seq = ringBuffer.next();
-		final ValueEvent ev2 = ringBuffer.get(seq);
-		ev2.setValue(346);
-		ringBuffer.publish(seq);
+		for(int i = 0; i < 20; ++i) {
+			disruptor.publishEvent(randomCommands);
+			Thread.sleep(5);
+		}
 		
 		disruptor.shutdown();
 		executor.shutdownNow();
 		
-		assertEquals(2, counter.count());
+		assertEquals(20, counter.count());
 	}
 
-	private static final class Counter {
-		private long count = 0;
-		
-		public void inc() {
-			count++;
-		}
-		
-		public long count() {
-			return count;
-		}
-	}
-	
-	private static final class ValueEvent {
+	private static final class Command {
 		private long value;
 
 		public long getValue() {
@@ -115,11 +75,41 @@ public class TestTest {
 			this.value = value;
 		}
 
-		public final static EventFactory<ValueEvent> EVENT_FACTORY = new EventFactory<ValueEvent>() {
-			public ValueEvent newInstance() {
-				return new ValueEvent();
+		public final static EventFactory<Command> EVENT_FACTORY = new EventFactory<Command>() {
+			public Command newInstance() {
+				return new Command();
 			}
 		};
 	}
 
+	private static final class Journaller implements EventHandler<Command> {
+		@Override
+		public void onEvent(Command event, long sequence, boolean endOfBatch)
+				throws Exception {
+			System.out.println("Got command : " + event.getValue() + " on thread " + Thread.currentThread().getName());
+		}
+	}
+	
+	private static final class Counter implements EventHandler<Command> {
+		private long count = 0;
+		
+		@Override
+		public void onEvent(Command event, long sequence, boolean endOfBatch)
+				throws Exception {
+			count++;
+		}
+		
+		public long count() {
+			return count;
+		}
+	}
+	
+	private static final class CommandTranslator implements EventTranslator<Command> {
+		long commandId = 0;
+		
+		@Override
+		public void translateTo(Command event, long sequence) {
+			event.setValue(commandId++);
+		}
+	}
 }

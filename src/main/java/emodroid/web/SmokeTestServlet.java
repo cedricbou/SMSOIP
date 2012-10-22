@@ -9,9 +9,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.lang.builder.ReflectionToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-
 @SuppressWarnings("serial")
 @WebServlet(urlPatterns={"/smoke"}, asyncSupported=true)
 public class SmokeTestServlet extends HttpServlet {

@@ -7,4 +7,9 @@
 		<servlet-name>Smoke</servlet-name>
 		<servlet-class>emodroid.web.SmokeTestServlet</servlet-class>
 	</servlet>
+
+	<servlet>
+		<servlet-name>SMS</servlet-name>
+		<servlet-class>emodroid.web.SMSServlet</servlet-class>
+	</servlet>
 </web-app>
