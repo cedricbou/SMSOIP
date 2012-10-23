@@ -12,4 +12,13 @@
 		<servlet-name>SMS</servlet-name>
 		<servlet-class>emodroid.web.SMSServlet</servlet-class>
 	</servlet>
+	
+	<servlet>
+		<servlet-name>SMSHessian</servlet-name>
+		<servlet-class>emodroid.web.SMSHessianServlet</servlet-class>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>SMSHessian</servlet-name>
+		<url-pattern>/hessian/sms</url-pattern>
+	</servlet-mapping>
 </web-app>
