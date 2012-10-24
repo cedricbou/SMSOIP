@@ -11,6 +11,12 @@ import emodroid.api.SMSAPI;
 import emodroid.api.SMSConstants;
 import emodroid.command.SMSCommand;
 import emodroid.command.translate.PushSmsTranslator;
+import emodroid.domain.SmsPushService;
+import emodroid.domain.SmsPushServiceListener;
+import emodroid.domain.recipient.RecipientName;
+import emodroid.domain.recipient.RecipientRepository;
+import emodroid.domain.sms.Sms;
+import emodroid.domain.sms.SmsRepository;
 
 @SuppressWarnings("unchecked")
 public class SMSApp implements SMSAPI {
@@ -27,7 +33,13 @@ public class SMSApp implements SMSAPI {
 				new SingleThreadedClaimStrategy(RING_BUFFER_CAPACITY),
 				new SleepingWaitStrategy());
 		
-		disruptor.handleEventsWith(new SMSProcessor());
+		disruptor.handleEventsWith(new SMSProcessor(new SmsPushService(new RecipientRepository(), new SmsRepository(), new SmsPushServiceListener() {
+			
+			@Override
+			public void onUnregisteredRecipient(Sms sms, RecipientName recipientName) {
+				// TODO Auto-generated method stub
+			}
+		})));
 		disruptor.start();
 	}
 	
